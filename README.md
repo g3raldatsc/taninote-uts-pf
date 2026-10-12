@@ -132,3 +132,91 @@ Dilanjut untuk menguji fungsi inti yang telah dibuat, kami mennggunakan code di 
 ![Pengujian Fungsi](fungsi_inti.png)
 
 Gambar di atas adalah hasil dari pengujian fungsi inti yang telah dibuat.
+
+### Validasi dan Function Composition
+
+- `validasi`: membuat fungsi pengecek kejadian dari riwayat yang ada
+- `tambahKejadian`: riwayat + kejadian baru → riwayat baru (atau pesan error)
+- `formatKondisi`: KondisiLahan -> teks laporan
+- `laporanPadaHari`: saring -> hitung -> format, digabung
+
+Seperti biasa, pengujian dilakukan dengan kumpulan code di bawah ini:
+
+```scala
+@main def Taninote(): Unit =
+  val riwayat: List[Kejadian] = List(
+    Kejadian.Tanam(1, "Padi", 1.0),
+    Kejadian.Pupuk(5, "Urea", 50.0),
+    Kejadian.Siram(10, 200.0),
+    Kejadian.Hama(30, "Wereng", 2),
+    Kejadian.Panen(90, 4.0)
+  )
+
+  println("Validasi: kejadian valid")
+  println(validasi(riwayat)(Kejadian.Panen(95, 1.0)))
+
+  println("\nValidasi: hari mundur")
+  println(validasi(riwayat)(Kejadian.Siram(20, 100.0)))
+
+  println("\nValidasi: tingkat hama salah")
+  println(validasi(riwayat)(Kejadian.Hama(100, "Wereng", 5)))
+
+  println("\nTambah kejadian valid")
+  println(tambahKejadian(riwayat, Kejadian.Panen(95, 1.0)).map(_.length))
+  println(s"Riwayat asli: ${riwayat.length} kejadian")
+
+  println("\nLaporan hari ke-30 (composition andThen)")
+  println(laporanPadaHari(30)(riwayat))
+
+  println("\nLaporan lengkap (composition compose)")
+  val laporanLengkap = formatKondisi compose hitung
+  println(laporanLengkap(riwayat))
+```
+
+![Pengujian Composition](composition.png)
+
+Gambar di atas adalah hasil pengujiannya.
+
+### Chaining
+
+Tahap ini memakai chaining, yaitu method berantai langsung pada data.
+
+- `namaJenis`: kejadian -> nama jenisnya (string)
+- `saring`: riwayat + aturan filter -> kejadian yang lolos
+- `cariJenis`: cari kejadian berdasarkan jenis, urut hari terbaru
+- `ringkasanJenis`: hitung jumlah kejadian tiap jenis
+- `formatKejadian`: kejadian -> satu baris teks
+
+Seperti biasa, pengujian dilakukan dengan kumpulan code di bawah ini:
+
+```scala
+@main def Taninote(): Unit =
+  val riwayat: List[Kejadian] = List(
+    Kejadian.Tanam(1, "Padi", 1.0),
+    Kejadian.Pupuk(5, "Urea", 50.0),
+    Kejadian.Siram(10, 200.0),
+    Kejadian.Siram(15, 150.0),
+    Kejadian.Hama(30, "Wereng", 2),
+    Kejadian.Panen(90, 4.0)
+  )
+
+  println("Seluruh riwayat")
+  riwayat.map(formatKejadian).foreach(println)
+
+  println("\nCari jenis Siram (terbaru dulu)")
+  cariJenis(riwayat, "siram").foreach(println)
+
+  println("\nCari jenis Hama")
+  cariJenis(riwayat, "Hama").foreach(println)
+
+  println("\nCari jenis Pupuk (tidak ada hasil?)")
+  println(cariJenis(riwayat, "Irigasi"))
+
+  println("\nSaring dengan aturan lambda: kejadian setelah hari ke-10")
+  saring(riwayat, k => k.hariKe > 10).map(formatKejadian).foreach(println)
+
+  println("\nRingkasan jumlah kejadian per jenis")
+  ringkasanJenis(riwayat).foreach((jenis, jumlah) => println(s"$jenis: $jumlah"))
+```
+
+![Pengujian Chaining](chaining.png)
