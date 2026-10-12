@@ -1,4 +1,6 @@
 import scala.annotation.tailrec
+import scala.io.StdIn.readLine
+import scala.util.Try
 
 // Struktur Data Taninote
 // Kejadian: apa yang terjadi di lahan
@@ -87,6 +89,10 @@ def validasi(riwayat: List[Kejadian]): Kejadian => Either[String, Kejadian] =
         Left("Hasil panen harus lebih dari 0")
       case Kejadian.Panen(_, _) if !sudahTanam =>
         Left("Belum ada kejadian tanam, tidak bisa panen")
+      case Kejadian.Pupuk(_, jenis, _) if jenis.trim.isEmpty =>
+        Left("Jenis pupuk tidak boleh kosong.")
+      case Kejadian.Hama(_, nama, _) if nama.trim.isEmpty =>
+        Left("Nama hama tidak boleh kosong.")
       case _ =>
         Right(kejadian)
 
@@ -115,8 +121,8 @@ val hitung: List[Kejadian] => KondisiLahan = kondisiSaatIni
 // Composition: tiga fungsi kecil digabung jadi satu fungsi baru
 // Belum menjalankan apa-apa sampai diberi riwayat.
 def laporanPadaHari(hari: Int): List[Kejadian] => String =
-  val saring: List[Kejadian] => List[Kejadian] = _.filter(_.hariKe <= hari)
-  saring andThen hitung andThen formatKondisi
+  val sampaiHari: List[Kejadian] => List[Kejadian] = _.filter(_.hariKe <= hari)
+  sampaiHari andThen hitung andThen formatKondisi
 
 
 // Nama jenis kejadian sebagai String
@@ -155,30 +161,147 @@ def ringkasanJenis(riwayat: List[Kejadian]): List[(String, Int)] =
     .toList
     .sortBy(_._1)
 
+
+// Fungsi bagian input
+def bacaTeks(prompt: String): String =
+  Option(readLine(prompt)).getOrElse("").trim
+
+def bacaAngka(prompt: String): Option[Int] =
+  Try(bacaTeks(prompt).toInt).toOption
+
+def bacaDesimal(prompt: String): Option[Double] =
+  Try(bacaTeks(prompt).replace(',', '.').toDouble).toOption
+
+// Membentuk kejadian dari input. None kalau ada input yang bukan angka.
+def bacaKejadian(): Option[Kejadian] =
+  println("Jenis kejadian: 1.Tanam  2.Pupuk  3.Siram  4.Hama  5.Panen")
+  bacaAngka("Pilih jenis: ") match
+    case Some(1) =>
+      for
+        h <- bacaAngka("Hari ke-: ")
+        t  = bacaTeks("Nama tanaman: ")
+        l <- bacaDesimal("Luas (hektar): ")
+      yield Kejadian.Tanam(h, t, l)
+    case Some(2) =>
+      for
+        h <- bacaAngka("Hari ke-: ")
+        j  = bacaTeks("Jenis pupuk: ")
+        k <- bacaDesimal("Jumlah (kg): ")
+      yield Kejadian.Pupuk(h, j, k)
+    case Some(3) =>
+      for
+        h <- bacaAngka("Hari ke-: ")
+        l <- bacaDesimal("Jumlah air (liter): ")
+      yield Kejadian.Siram(h, l)
+    case Some(4) =>
+      for
+        h <- bacaAngka("Hari ke-: ")
+        n  = bacaTeks("Nama hama: ")
+        t <- bacaAngka("Tingkat serangan (1-3): ")
+      yield Kejadian.Hama(h, n, t)
+    case Some(5) =>
+      for
+        h <- bacaAngka("Hari ke-: ")
+        t <- bacaDesimal("Hasil panen (ton): ")
+      yield Kejadian.Panen(h, t)
+    case _ => None
+
+// Menu
+val teksMenu: String = List(
+  "==============================================",
+  "  Taninote: Sistem Pencatatan Riwayat Lahan",
+  "==============================================",
+  " 1. Lihat seluruh riwayat kejadian",
+  " 2. Lihat kondisi lahan saat ini",
+  " 3. Lihat kondisi lahan pada hari tertentu",
+  " 4. Tambah kejadian baru",
+  " 5. Batalkan kejadian terakhir (undo)",
+  " 6. Cari kejadian berdasarkan jenis",
+  " 7. Laporan ringkasan musim tanam",
+  " 0. Keluar",
+  "=============================================="
+).mkString("\n")
+
+// Menjalankan satu pilihan menu. Mengembalikan riwayat
+def proses(pilihan: String, riwayat: List[Kejadian]): List[Kejadian] =
+  pilihan match
+    case "1" =>
+      println("\nRiwayat kejadian")
+      if riwayat.isEmpty then println("(belum ada kejadian)")
+      else riwayat.map(formatKejadian).foreach(println)
+      riwayat
+
+    case "2" =>
+      println("\nKondisi lahan saat ini")
+      println(formatKondisi(hitung(riwayat)))
+      riwayat
+
+    case "3" =>
+      bacaAngka("Hari ke-: ") match
+        case Some(h) =>
+          println(s"\nKondisi lahan pada hari ke-$h")
+          println(laporanPadaHari(h)(riwayat))
+        case None => println("Input harus berupa angka")
+      riwayat
+
+    case "4" =>
+      bacaKejadian() match
+        case None =>
+          println("Input tidak valid, kejadian tidak ditambahkan")
+          riwayat
+        case Some(kejadian) =>
+          tambahKejadian(riwayat, kejadian) match
+            case Left(pesan) =>
+              println(s"Gagal: $pesan")
+              riwayat
+            case Right(riwayatBaru) =>
+              println("Kejadian berhasil ditambahkan")
+              riwayatBaru
+
+    case "5" =>
+      if riwayat.isEmpty then
+        println("Belum ada kejadian yang bisa dibatalkan")
+        riwayat
+      else
+        println(s"Dibatalkan: ${formatKejadian(riwayat.last)}")
+        riwayat.init
+
+    case "6" =>
+      val jenis = bacaTeks("Jenis (Tanam/Pupuk/Siram/Hama/Panen): ")
+      val hasil = cariJenis(riwayat, jenis)
+      println(s"\nHasil pencarian '$jenis' (terbaru dulu)")
+      if hasil.isEmpty then println("(tidak ditemukan)")
+      else hasil.foreach(println)
+      riwayat
+
+    case "7" =>
+      println("\nLaporan ringkasan musim tanam")
+      println(s"Total kejadian : ${riwayat.length}")
+      println("Jumlah per jenis:")
+      ringkasanJenis(riwayat).foreach((jenis, jumlah) => println(s"  $jenis: $jumlah"))
+      println("Kondisi akhir:")
+      println(formatKondisi(hitung(riwayat)))
+      riwayat
+
+    case _ =>
+      println("Masukkan input yang benar bangg woi")
+      riwayat
+
+@tailrec
+def loop(riwayat: List[Kejadian]): Unit =
+  println(s"\n$teksMenu")
+  val pilihan = bacaTeks("Pilih menu: ")
+  if pilihan == "0" then    // base casenya
+    println("Terima kasih telah memakai Taninote.")
+  else
+    loop(proses(pilihan, riwayat))
+
 @main def Taninote(): Unit =
-  val riwayat: List[Kejadian] = List(
+  val dataAwal: List[Kejadian] = List(
     Kejadian.Tanam(1, "Padi", 1.0),
     Kejadian.Pupuk(5, "Urea", 50.0),
     Kejadian.Siram(10, 200.0),
     Kejadian.Siram(15, 150.0),
-    Kejadian.Hama(30, "Wereng", 2),
-    Kejadian.Panen(90, 4.0)
+    Kejadian.Hama(30, "Wereng", 2)
   )
-
-  println("Seluruh riwayat")
-  riwayat.map(formatKejadian).foreach(println)
-
-  println("\nCari jenis Siram (terbaru dulu)")
-  cariJenis(riwayat, "siram").foreach(println)
-
-  println("\nCari jenis Hama")
-  cariJenis(riwayat, "Hama").foreach(println)
-
-  println("\nCari jenis Pupuk (tidak ada hasil?)")
-  println(cariJenis(riwayat, "Irigasi"))
-
-  println("\nSaring dengan aturan lambda: kejadian setelah hari ke-10")
-  saring(riwayat, k => k.hariKe > 10).map(formatKejadian).foreach(println)
-
-  println("\nRingkasan jumlah kejadian per jenis")
-  ringkasanJenis(riwayat).foreach((jenis, jumlah) => println(s"$jenis: $jumlah"))
+  loop(dataAwal)
