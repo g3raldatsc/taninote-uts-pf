@@ -55,14 +55,80 @@ Disini, bakal ada dua struktur data dan keduanya immutable.
 
 (2) KondisiLahan
 
-- tanaman -> String: tanaman yang sedang ditanam (None kalau lahan kosong)
+- tanaman -> Option[String]: tanaman yang sedang ditanam (None kalau lahan kosong)
 - luasHa -> Double: luas lahan yang ditanami
 - totalPupukKg -> Double: akumulasi pupuk
+- totalAirLiter -> Double: akumulasi air
 - tingkatHama -> Int: akumulasi serangan hama
 - totalPanenTon -> Double: akumulasi hasil panen
 
 >Lahan juga butuh keadaan awal, yaitu lahan kosong dengan semua angka 0 dan tanaman = None. Keadaan ini jadi titik mulai saat kejadian dihitung satu per satu. Nanti diletakkan di companion object dengan nama kosong.
 
+Sebagai pengujian, kami menggunakan pembuktian dengan code di bawah untuk melihat struktur data bekerja dengan baik:
+
+```scala
+// Pengujian
+@main def Taninote(): Unit =
+  val riwayat: List[Kejadian] = List(
+    Kejadian.Tanam(1, "Padi", 1.0),
+    Kejadian.Pupuk(5, "Urea", 50.0),
+    Kejadian.Siram(10, 200.0),
+    Kejadian.Hama(30, "Wereng", 2),
+    Kejadian.Panen(90, 4.0)
+  )
+
+  println("Riwayat")
+  riwayat.foreach(println)
+
+  println("\nHari tiap kejadian")
+  println(riwayat.map(_.hariKe))
+
+  println("\nUji immutability")
+  val awal = KondisiLahan.kosong
+  val setelahTanam = awal.copy(tanaman = Some("Padi"), luasHa = 1.0)
+  println(s"Awal: $awal")
+  println(s"Setelah tanam: $setelahTanam")
+  println(s"Awal masih: $awal")
+```
+
 ![Pengujian Struktur Data](pengujian.png)
 
 Gambar di atas adalah hasil dari pengujian struktur datanya.
+
+### Fungsi Inti
+
+- `terapkan`: satu lahan + satu kejadian -> lahan baru
+- `replay`: menerapkan seluruh riwayat satu per satu
+- `kondisiPadaHari`: kondisi lahan di hari tertentu
+
+Dilanjut untuk menguji fungsi inti yang telah dibuat, kami mennggunakan code di bawah:
+
+```scala
+@main def Taninote(): Unit =
+  val riwayat: List[Kejadian] = List(
+    Kejadian.Tanam(1, "Padi", 1.0),
+    Kejadian.Pupuk(5, "Urea", 50.0),
+    Kejadian.Siram(10, 200.0),
+    Kejadian.Hama(30, "Wereng", 2),
+    Kejadian.Panen(90, 4.0)
+  )
+
+  println("Kondisi saat ini")
+  println(kondisiSaatIni(riwayat))
+
+  println("\nKondisi pada hari ke-30")
+  println(kondisiPadaHari(riwayat, 30))
+
+  println("\nKondisi pada hari ke-10")
+  println(kondisiPadaHari(riwayat, 10))
+
+  println("\nUndo kejadian terakhir (riwayat.init)")
+  println(kondisiSaatIni(riwayat.init))
+
+  println("\nRiwayat asli masih utuh")
+  println(s"Jumlah kejadian: ${riwayat.length}")
+```
+
+![Pengujian Fungsi](fungsi_inti.png)
+
+Gambar di atas adalah hasil dari pengujian fungsi inti yang telah dibuat.

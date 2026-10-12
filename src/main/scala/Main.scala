@@ -1,5 +1,6 @@
-// Struktur Data Taninote
+import scala.annotation.tailrec
 
+// Struktur Data Taninote
 // Kejadian: apa yang terjadi di lahan
 enum Kejadian:
   case Tanam(hari: Int, tanaman: String, luasHa: Double)
@@ -12,9 +13,9 @@ enum Kejadian:
   def hariKe: Int = this match
     case Tanam(h, _, _) => h
     case Pupuk(h, _, _) => h
-    case Siram(h, _)    => h
-    case Hama(h, _, _)  => h
-    case Panen(h, _)    => h
+    case Siram(h, _) => h
+    case Hama(h, _, _) => h
+    case Panen(h, _) => h
 
 // KondisiLahan: hasil hitungan dari kejadian
 case class KondisiLahan(
@@ -30,7 +31,36 @@ object KondisiLahan:
   // Keadaan awal: lahan kosong, titik mulai saat menghitung kejadian
   val kosong: KondisiLahan = KondisiLahan(None, 0.0, 0.0, 0.0, 0, 0.0)
 
-// Pengujian
+
+// Pure function: lahan lama + satu kejadian -> lahan baru
+def terapkan(lahan: KondisiLahan, kejadian: Kejadian): KondisiLahan =
+  kejadian match
+    case Kejadian.Tanam(_, tanaman, luas) => lahan.copy(tanaman = Some(tanaman), luasHa = luas)
+    case Kejadian.Pupuk(_, _, jumlah) => lahan.copy(totalPupukKg = lahan.totalPupukKg + jumlah)
+    case Kejadian.Siram(_, liter) => lahan.copy(totalAirLiter = lahan.totalAirLiter + liter)
+    case Kejadian.Hama(_, _, tingkat) => lahan.copy(tingkatHama = lahan.tingkatHama + tingkat)
+    case Kejadian.Panen(_, hasil) => lahan.copy(totalPanenTon = lahan.totalPanenTon + hasil)
+
+// Higher-Order Function + tail recursion
+// 'aturan' ini itu function value yang dikirim sebagai parameter
+@tailrec
+def replay(
+  riwayat: List[Kejadian],
+  kondisi: KondisiLahan,
+  aturan: (KondisiLahan, Kejadian) => KondisiLahan
+): KondisiLahan =
+  riwayat match
+    case Nil => kondisi // base case
+    case kejadian :: sisa => replay(sisa, aturan(kondisi, kejadian), aturan) // recursive case
+
+// Kondisi lahan dari seluruh riwayat
+def kondisiSaatIni(riwayat: List[Kejadian]): KondisiLahan =
+  replay(riwayat, KondisiLahan.kosong, terapkan)
+
+// Kondisi lahan pada hari tertentu: saring kejadian sampai hari itu, lalu replay
+def kondisiPadaHari(riwayat: List[Kejadian], hari: Int): KondisiLahan =
+  kondisiSaatIni(riwayat.filter(_.hariKe <= hari))
+
 @main def Taninote(): Unit =
   val riwayat: List[Kejadian] = List(
     Kejadian.Tanam(1, "Padi", 1.0),
@@ -40,15 +70,17 @@ object KondisiLahan:
     Kejadian.Panen(90, 4.0)
   )
 
-  println("Riwayat")
-  riwayat.foreach(println)
+  println("Kondisi saat ini")
+  println(kondisiSaatIni(riwayat))
 
-  println("\nHari tiap kejadian")
-  println(riwayat.map(_.hariKe))
+  println("\nKondisi pada hari ke-30")
+  println(kondisiPadaHari(riwayat, 30))
 
-  println("\nUji immutability")
-  val awal = KondisiLahan.kosong
-  val setelahTanam = awal.copy(tanaman = Some("Padi"), luasHa = 1.0)
-  println(s"Awal: $awal")
-  println(s"Setelah tanam: $setelahTanam")
-  println(s"Awal masih: $awal")
+  println("\nKondisi pada hari ke-10")
+  println(kondisiPadaHari(riwayat, 10))
+
+  println("\nUndo kejadian terakhir (riwayat.init)")
+  println(kondisiSaatIni(riwayat.init))
+
+  println("\nRiwayat asli masih utuh")
+  println(s"Jumlah kejadian: ${riwayat.length}")

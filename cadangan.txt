@@ -1,0 +1,22 @@
+// Pengujian
+@main def Taninote(): Unit =
+  val riwayat: List[Kejadian] = List(
+    Kejadian.Tanam(1, "Padi", 1.0),
+    Kejadian.Pupuk(5, "Urea", 50.0),
+    Kejadian.Siram(10, 200.0),
+    Kejadian.Hama(30, "Wereng", 2),
+    Kejadian.Panen(90, 4.0)
+  )
+
+  println("Riwayat")
+  riwayat.foreach(println)
+
+  println("\nHari tiap kejadian")
+  println(riwayat.map(_.hariKe))
+
+  println("\nUji immutability")
+  val awal = KondisiLahan.kosong
+  val setelahTanam = awal.copy(tanaman = Some("Padi"), luasHa = 1.0)
+  println(s"Awal: $awal")
+  println(s"Setelah tanam: $setelahTanam")
+  println(s"Awal masih: $awal")
