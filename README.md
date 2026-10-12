@@ -301,13 +301,6 @@ scala-cli run src/main/scala/Main.scala
 
 Untuk keluar dari aplikasi, ketik `0` pada menu utama.
 
-**Jika input tidak bisa diketik saat program berjalan**, tambahkan dua baris ini di akhir `build.sbt`, lalu jalankan ulang `sbt run`:
-
-```scala
-run / fork := true
-run / connectInput := true
-```
-
 ---
 
 ### Panduan Penggunaan Menu
